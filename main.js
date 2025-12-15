@@ -1,4 +1,4 @@
-// main.js - Versão Final (Modularizada)
+// main.js - Versão Final Corrigida (Sem Alert + Fix Visual Fantasmas)
 
 var vertexShaderSource = `
   attribute vec3 a_position;
@@ -214,7 +214,6 @@ var scorePenalty = 0;
 
 var keyData = { x: 0, z: 0, active: true };
 var doorData = { row: -1, col: -1, faceIndex: -1, offsetBytes: 0 };
-// A variável ghosts foi removida pois agora está dentro do objeto Ghost em ghost.js
 
 function degToRad(d) { return d * Math.PI / 180; }
 
@@ -267,7 +266,7 @@ function main() {
   window.Character = window.Character || {};
   window.Character.init(gl);
   
-  // Inicializa Fantasmas (Arquivo ghost.js)
+  // Inicializa Fantasmas
   if(window.Ghost) {
       window.Ghost.init(gl);
   } else {
@@ -336,7 +335,6 @@ function main() {
       console.log("Nova rodada iniciada!");
   }
 
-  // Inicio
   resetMatch(true);
 
   // --- CONTROLES ---
@@ -361,7 +359,7 @@ function main() {
     if (window.LevelMap[row][col] === 1) {
         if (row === doorData.row && col === doorData.col) {
             if (!keyData.active) {
-                // GANHOU
+                // GANHOU - SEM ALERT
                 var endTime = Date.now();
                 var durationSeconds = (endTime - startTime) / 1000;
                 var basePoints = 10 - Math.floor(durationSeconds / 4.0);
@@ -369,6 +367,7 @@ function main() {
                 var finalPoints = (basePoints - scorePenalty) < 0 ? 0 : (basePoints - scorePenalty);
                 
                 scores.push(finalPoints);
+                console.log("GANHOU! Pontos: " + finalPoints);
                 resetMatch(true); 
             } else {
                 console.log("Porta trancada!");
@@ -405,7 +404,8 @@ function main() {
   // --- LOOP PRINCIPAL ---
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
   gl.enable(gl.DEPTH_TEST)
-  gl.enable(gl.CULL_FACE)
+  // Deixa CULL_FACE ligado globalmente (importante para chão e paredes)
+  gl.enable(gl.CULL_FACE) 
   gl.clearColor(0.05, 0.05, 0.05, 1.0)
   gl.useProgram(program)
 
@@ -420,7 +420,7 @@ function main() {
         if(hit) {
             console.log("FANTASMA PEGOU! -5 Pontos");
             scorePenalty += 5;
-            resetMatch(false); // Reseta posições, mantém penalidade
+            resetMatch(false); 
         }
     }
     
@@ -512,9 +512,12 @@ function main() {
         gl.drawElements(gl.TRIANGLES, sphereBuffers.count, gl.UNSIGNED_SHORT, 0)
     }
 
-    // --- DRAW FANTASMAS (Módulo Separado) ---
+    // --- DRAW FANTASMAS (CORREÇÃO DE VISUALIZAÇÃO) ---
     if(window.Ghost) {
+        // Desabilita CULL_FACE apenas para os fantasmas para corrigir a transparência da frente
+        gl.disable(gl.CULL_FACE); 
         window.Ghost.draw(gl, loc, window.m4);
+        gl.enable(gl.CULL_FACE);
     }
 
     // --- DRAW PERSONAGEM ---
