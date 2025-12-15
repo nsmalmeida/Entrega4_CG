@@ -1,26 +1,32 @@
-// main.js - Usa m4.js, level.js e character.js externos
+// main.js - Refatorado para o padrão da professora (Cálculo de Matrizes no Shader)
 
 var vertexShaderSource = `
   attribute vec3 a_position;
   attribute vec3 a_normal;
   attribute vec2 a_texcoord;
 
-  uniform mat4 u_worldViewProjection;
-  uniform mat4 u_world;
-  uniform mat4 u_viewInverse;
-  uniform mat4 u_worldInverseTranspose;
+  // Matrizes separadas (Padrão da Professora)
+  uniform mat4 u_projectionMatrix;
+  uniform mat4 u_viewingMatrix;
+  uniform mat4 u_modelViewMatrix; // No código dela, isso recebe a matriz do objeto (World)
+  uniform mat4 u_inverseTransposeModelViewMatrix;
+  
   uniform float u_textureScale;
 
   varying vec3 v_normal;
-  varying vec3 v_surfaceToView;
-  varying vec2 v_texcoord;
   varying vec3 v_surfaceWorldPosition;
+  varying vec2 v_texcoord;
 
   void main() {
-    gl_Position = u_worldViewProjection * vec4(a_position, 1.0);
-    v_normal = mat3(u_worldInverseTranspose) * a_normal;
-    v_surfaceWorldPosition = (u_world * vec4(a_position, 1.0)).xyz;
-    v_surfaceToView = u_viewInverse[3].xyz - v_surfaceWorldPosition;
+    // Multiplicação feita aqui na GPU, ordem: Proj * View * Model * Pos
+    gl_Position = u_projectionMatrix * u_viewingMatrix * u_modelViewMatrix * vec4(a_position, 1.0);
+
+    // Normal precisa ser corrigida com a inversa transposta da matriz do objeto
+    v_normal = mat3(u_inverseTransposeModelViewMatrix) * a_normal;
+
+    // Posição no mundo para cálculo de luz
+    v_surfaceWorldPosition = (u_modelViewMatrix * vec4(a_position, 1.0)).xyz;
+
     v_texcoord = a_texcoord * u_textureScale;
   }
 `
@@ -29,22 +35,27 @@ var fragmentShaderSource = `
   precision mediump float;
 
   varying vec3 v_normal;
-  varying vec3 v_surfaceToView;
-  varying vec2 v_texcoord;
   varying vec3 v_surfaceWorldPosition;
+  varying vec2 v_texcoord;
 
   uniform sampler2D u_texture;
   uniform int u_useTexture;
   uniform vec4 u_color;
 
+  // Luzes
   uniform vec3 u_lightPositions[4];
   uniform vec3 u_lightColors[4];
   uniform vec3 u_ambientLight;
   uniform float u_shininess;
+  
+  // Necessário para o specular (Padrão da professora usa u_viewPosition)
+  uniform vec3 u_viewPosition;
 
   void main() {
     vec3 normal = normalize(v_normal);
-    vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+    
+    // Calcula vetor da superfície até a câmera (View Direction)
+    vec3 surfaceToViewDirection = normalize(u_viewPosition - v_surfaceWorldPosition);
 
     vec4 baseColor;
     if (u_useTexture == 1) {
@@ -64,7 +75,7 @@ var fragmentShaderSource = `
 
       float specular = 0.0;
       if (light > 0.0) {
-        specular = pow(dot(normal, halfVector), u_shininess);
+        specular = pow(max(dot(normal, halfVector), 0.0), u_shininess);
       }
 
       totalLight += (diffuse * u_lightColors[i]);
@@ -251,10 +262,9 @@ var mapSize = 21
 var blockSize = 1.0
 var mapOffset = (mapSize * blockSize) / 2
 
-// --- ATUALIZADO: SCORE E TIMER ---
-var scores = []; // Array para guardar pontuação
-var startTime = Date.now(); // Marca o inicio da rodada
-var uiElement = document.getElementById("ui-controls"); // Referencia para atualizar texto
+var scores = []; 
+var startTime = Date.now(); 
+var uiElement = document.getElementById("ui-controls"); 
 
 var keyData = { x: 0, z: 0, active: true };
 var doorData = { row: -1, col: -1, faceIndex: -1, offsetBytes: 0 };
@@ -273,14 +283,20 @@ function main() {
 
   var program = createProgram(gl, vertexShaderSource, fragmentShaderSource)
 
+  // ATUALIZADO: Locations seguindo nomes da professora
   var loc = {
     position: gl.getAttribLocation(program, "a_position"),
     normal: gl.getAttribLocation(program, "a_normal"),
     texcoord: gl.getAttribLocation(program, "a_texcoord"),
-    worldViewProjection: gl.getUniformLocation(program, "u_worldViewProjection"),
-    world: gl.getUniformLocation(program, "u_world"),
-    viewInverse: gl.getUniformLocation(program, "u_viewInverse"),
-    worldInverseTranspose: gl.getUniformLocation(program, "u_worldInverseTranspose"),
+    
+    // Matrizes Separadas
+    projectionMatrix: gl.getUniformLocation(program, "u_projectionMatrix"),
+    viewingMatrix: gl.getUniformLocation(program, "u_viewingMatrix"),
+    modelViewMatrix: gl.getUniformLocation(program, "u_modelViewMatrix"), // A professora chama de modelViewMatrix, mas usa como Model
+    inverseTransposeModelViewMatrix: gl.getUniformLocation(program, "u_inverseTransposeModelViewMatrix"),
+    
+    // Outros
+    viewPosition: gl.getUniformLocation(program, "u_viewPosition"), // Camera Position
     lightPositions: gl.getUniformLocation(program, "u_lightPositions"),
     lightColors: gl.getUniformLocation(program, "u_lightColors"),
     ambientLight: gl.getUniformLocation(program, "u_ambientLight"),
@@ -379,25 +395,15 @@ function main() {
       }
   }
 
-  // --- ATUALIZADO: FUNÇÃO DE RESETAR O JOGO ---
   function resetMatch() {
-      // 1. Reseta posição do personagem
       charX = 0;
       charZ = 0;
-      
-      // 2. Reseta/Sorteia chave
       spawnKey();
-      
-      // 3. Reseta/Sorteia porta
       spawnDoor();
-      
-      // 4. Reinicia cronômetro
       startTime = Date.now();
-      
       console.log("Nova rodada iniciada!");
   }
 
-  // Inicialização do primeiro jogo
   resetMatch();
 
   window.addEventListener("keydown", (e) => { keysPressed[e.key.toLowerCase()] = true })
@@ -419,22 +425,13 @@ function main() {
     var row = Math.floor(z + mapOffset)
     if (row < 0 || row >= mapSize || col < 0 || col >= mapSize) { return true }
     
-    // Colisão com parede
     if (window.LevelMap[row][col] === 1) {
-        // --- ATUALIZADO: Lógica de Vitoria ---
         if (row === doorData.row && col === doorData.col) {
             if (!keyData.active) {
-                // GANHOU A RODADA
                 var endTime = Date.now();
                 var durationSeconds = (endTime - startTime) / 1000;
-                
-                // Pontuação: Max 10. Perde 1 ponto a cada 4 segundos (ajustável)
-                // Exemplo: 0s-4s = 10pts, 5s-8s = 9pts, etc.
                 var points = Math.max(0, 10 - Math.floor(durationSeconds / 4.0));
-                
                 scores.push(points);
-                
-                // Reinicia o jogo
                 resetMatch();
             } else {
                 console.log("Porta trancada!");
@@ -485,9 +482,7 @@ function main() {
   function drawScene() {
     updateCharacter()
     
-    // --- ATUALIZADO: UI UPDATE ---
     var elapsed = (Date.now() - startTime) / 1000;
-    // Calcula pontos potenciais em tempo real para mostrar na tela
     var potentialPoints = Math.max(0, 10 - Math.floor(elapsed / 4.0));
     
     if (uiElement) {
@@ -510,6 +505,7 @@ function main() {
     var bottom = -top
     var right = top * aspect
     var left = -right
+    // Padrão da Professora: u_projectionMatrix
     var projectionMatrix = window.m4.setPerspectiveProjectionMatrix(left, right, bottom, top, zNear, zFar)
 
     var camHeight = zoom * 0.8
@@ -517,15 +513,21 @@ function main() {
     var camX = Math.sin(cameraAngle) * camRadius
     var camZ = Math.cos(cameraAngle) * camRadius
 
+    // Padrão da Professora: u_viewingMatrix
     var viewMatrix = window.m4.setViewingMatrix([camX, camHeight, camZ], [0, 0, 0], [0, 1, 0])
-    var viewInverseMatrix = window.m4.inverse(viewMatrix)
-    var viewProjectionMatrix = window.m4.multiply(projectionMatrix, viewMatrix)
 
     gl.uniform3fv(loc.lightPositions, lightPositions)
     gl.uniform3fv(loc.lightColors, lightColors)
     gl.uniform3fv(loc.ambientLight, [0.2, 0.2, 0.2])
     gl.uniform1f(loc.shininess, 30.0)
-    gl.uniformMatrix4fv(loc.viewInverse, false, viewInverseMatrix)
+    
+    // Padrão da professora: Enviar camera position para o Specular
+    gl.uniform3fv(loc.viewPosition, [camX, camHeight, camZ]);
+
+    // Envia Matrizes Universais (Proj e View)
+    gl.uniformMatrix4fv(loc.projectionMatrix, false, projectionMatrix);
+    gl.uniformMatrix4fv(loc.viewingMatrix, false, viewMatrix);
+
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.pos)
     gl.vertexAttribPointer(loc.position, 3, gl.FLOAT, false, 0, 0)
@@ -542,10 +544,11 @@ function main() {
     var floorM = window.m4.identity()
     floorM = window.m4.translate(floorM, 0, -0.5, 0)
     floorM = window.m4.scale(floorM, mapSize, 1, mapSize)
-    var floorWVP = window.m4.multiply(viewProjectionMatrix, floorM)
-    gl.uniformMatrix4fv(loc.worldViewProjection, false, floorWVP)
-    gl.uniformMatrix4fv(loc.world, false, floorM)
-    gl.uniformMatrix4fv(loc.worldInverseTranspose, false, window.m4.transpose(window.m4.inverse(floorM)))
+    
+    // Envia Model Matrix e Normal Matrix especificas do Chão
+    gl.uniformMatrix4fv(loc.modelViewMatrix, false, floorM);
+    gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(floorM)));
+
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, texTerrain)
     gl.uniform1i(loc.texture, 0)
@@ -561,12 +564,13 @@ function main() {
         if (window.LevelMap[row][col] === 1) {
           var x = col - mapOffset + 0.5
           var z = row - mapOffset + 0.5
+          
           var wallM = window.m4.identity()
           wallM = window.m4.translate(wallM, x, 0.5, z)
-          var wallWVP = window.m4.multiply(viewProjectionMatrix, wallM)
-          gl.uniformMatrix4fv(loc.worldViewProjection, false, wallWVP)
-          gl.uniformMatrix4fv(loc.world, false, wallM)
-          gl.uniformMatrix4fv(loc.worldInverseTranspose, false, window.m4.transpose(window.m4.inverse(wallM)))
+          
+          // Envia Model Matrix e Normal Matrix da Parede
+          gl.uniformMatrix4fv(loc.modelViewMatrix, false, wallM);
+          gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(wallM)));
 
           if (row === doorData.row && col === doorData.col) {
               gl.bindTexture(gl.TEXTURE_2D, texWall);
@@ -601,10 +605,11 @@ function main() {
 
         var keyM = window.m4.identity()
         keyM = window.m4.translate(keyM, keyData.x, 0.5, keyData.z)
-        var keyWVP = window.m4.multiply(viewProjectionMatrix, keyM)
-        gl.uniformMatrix4fv(loc.worldViewProjection, false, keyWVP)
-        gl.uniformMatrix4fv(loc.world, false, keyM)
-        gl.uniformMatrix4fv(loc.worldInverseTranspose, false, window.m4.transpose(window.m4.inverse(keyM)))
+        
+        // Envia Model Matrix e Normal Matrix da Chave
+        gl.uniformMatrix4fv(loc.modelViewMatrix, false, keyM);
+        gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(keyM)));
+
         gl.drawElements(gl.TRIANGLES, sphereBuffers.count, gl.UNSIGNED_SHORT, 0)
     }
 
@@ -622,11 +627,11 @@ function main() {
     var charM = window.m4.identity()
     charM = window.m4.scale(charM, 0.8, 0.8, 0.8)
     charM = window.m4.translate(charM, charX, 0.5, charZ)
-    var charWVP = window.m4.multiply(viewProjectionMatrix, charM)
-
-    gl.uniformMatrix4fv(loc.worldViewProjection, false, charWVP)
-    gl.uniformMatrix4fv(loc.world, false, charM)
-    gl.uniformMatrix4fv(loc.worldInverseTranspose, false, window.m4.transpose(window.m4.inverse(charM)))
+    
+    // Envia Model Matrix e Normal Matrix do Personagem
+    gl.uniformMatrix4fv(loc.modelViewMatrix, false, charM);
+    gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(charM)));
+    
     gl.drawElements(gl.TRIANGLES, window.Character.bufferInfo.count, gl.UNSIGNED_SHORT, 0)
     gl.enableVertexAttribArray(loc.texcoord)
 
