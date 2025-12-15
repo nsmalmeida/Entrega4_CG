@@ -1,6 +1,6 @@
 // main.js - Versão Final Corrigida (Sem Alert + Fix Visual Fantasmas)
 
-var vertexShaderSource = `
+let vertexShaderSource = `
   attribute vec3 a_position;
   attribute vec3 a_normal;
   attribute vec2 a_texcoord;
@@ -24,7 +24,7 @@ var vertexShaderSource = `
   }
 `
 
-var fragmentShaderSource = `
+let fragmentShaderSource = `
   precision mediump float;
 
   varying vec3 v_normal;
@@ -75,7 +75,7 @@ var fragmentShaderSource = `
 `
 
 function createShader(gl, type, source) {
-  var shader = gl.createShader(type)
+  let shader = gl.createShader(type)
   gl.shaderSource(shader, source)
   gl.compileShader(shader)
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -87,9 +87,9 @@ function createShader(gl, type, source) {
 }
 
 function createProgram(gl, vsSource, fsSource) {
-  var vs = createShader(gl, gl.VERTEX_SHADER, vsSource)
-  var fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource)
-  var program = gl.createProgram()
+  let vs = createShader(gl, gl.VERTEX_SHADER, vsSource)
+  let fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource)
+  let program = gl.createProgram()
   gl.attachShader(program, vs)
   gl.attachShader(program, fs)
   gl.linkProgram(program)
@@ -105,11 +105,11 @@ function isPowerOf2(value) {
 }
 
 function loadTexture(gl, url) {
-  var texture = gl.createTexture()
+  let texture = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, texture)
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]))
   
-  var image = new Image()
+  let image = new Image()
   image.crossOrigin = "anonymous"
   image.src = url
   image.onload = () => {
@@ -172,29 +172,29 @@ function createCubeData() {
 }
 
 function createSphereData(radius, latitudeBands, longitudeBands) {
-    var positions = [], normals = [], texcoords = [], indices = [];
-    for (var latNumber = 0; latNumber <= latitudeBands; latNumber++) {
-      var theta = latNumber * Math.PI / latitudeBands;
-      var sinTheta = Math.sin(theta);
-      var cosTheta = Math.cos(theta);
-      for (var longNumber = 0; longNumber <= longitudeBands; longNumber++) {
-        var phi = longNumber * 2 * Math.PI / longitudeBands;
-        var sinPhi = Math.sin(phi);
-        var cosPhi = Math.cos(phi);
-        var x = cosPhi * sinTheta;
-        var y = cosTheta;
-        var z = sinPhi * sinTheta;
-        var u = 1 - (longNumber / longitudeBands);
-        var v = 1 - (latNumber / latitudeBands);
+    let positions = [], normals = [], texcoords = [], indices = [];
+    for (let latNumber = 0; latNumber <= latitudeBands; latNumber++) {
+      let theta = latNumber * Math.PI / latitudeBands;
+      let sinTheta = Math.sin(theta);
+      let cosTheta = Math.cos(theta);
+      for (let longNumber = 0; longNumber <= longitudeBands; longNumber++) {
+        let phi = longNumber * 2 * Math.PI / longitudeBands;
+        let sinPhi = Math.sin(phi);
+        let cosPhi = Math.cos(phi);
+        let x = cosPhi * sinTheta;
+        let y = cosTheta;
+        let z = sinPhi * sinTheta;
+        let u = 1 - (longNumber / longitudeBands);
+        let v = 1 - (latNumber / latitudeBands);
         normals.push(x, y, z);
         texcoords.push(u, v);
         positions.push(radius * x, radius * y, radius * z);
       }
     }
-    for (var latNumber = 0; latNumber < latitudeBands; latNumber++) {
-      for (var longNumber = 0; longNumber < longitudeBands; longNumber++) {
-        var first = (latNumber * (longitudeBands + 1)) + longNumber;
-        var second = first + longitudeBands + 1;
+    for (let latNumber = 0; latNumber < latitudeBands; latNumber++) {
+      for (let longNumber = 0; longNumber < longitudeBands; longNumber++) {
+        let first = (latNumber * (longitudeBands + 1)) + longNumber;
+        let second = first + longitudeBands + 1;
         indices.push(first, second, first + 1, second, second + 1, first + 1);
       }
     }
@@ -202,29 +202,29 @@ function createSphereData(radius, latitudeBands, longitudeBands) {
 }
 
 // --- ESTADO DO JOGO ---
-var charX = 0, charZ = 0, charSpeed = 0.03;
-var keysPressed = {}, isDragging = false, lastMouseX = 0;
-var cameraAngle = 0, zoom = 30.0;
-var mapSize = 21, blockSize = 1.0, mapOffset = (mapSize * blockSize) / 2;
+let charX = 0, charZ = 0, charSpeed = 0.03;
+let keysPressed = {}, isDragging = false, lastMouseX = 0;
+let cameraAngle = 0, zoom = 30.0;
+let mapSize = 21, blockSize = 1.0, mapOffset = (mapSize * blockSize) / 2;
 
-var scores = []; 
-var startTime = Date.now(); 
-var uiElement = document.getElementById("ui-controls"); 
-var scorePenalty = 0; 
+let scores = []; 
+let startTime = Date.now(); 
+let uiElement = document.getElementById("ui-controls"); 
+let scorePenalty = 0; 
 
-var keyData = { x: 0, z: 0, active: true };
-var doorData = { row: -1, col: -1, faceIndex: -1, offsetBytes: 0 };
+let keyData = { x: 0, z: 0, active: true };
+let doorData = { row: -1, col: -1, faceIndex: -1, offsetBytes: 0 };
 
 function degToRad(d) { return d * Math.PI / 180; }
 
 function main() {
-  var canvas = document.querySelector("#glCanvas")
-  var gl = canvas.getContext("webgl")
+  let canvas = document.querySelector("#glCanvas")
+  let gl = canvas.getContext("webgl")
   if (!gl) { console.error("WebGL não suportado"); return; }
 
-  var program = createProgram(gl, vertexShaderSource, fragmentShaderSource)
+  let program = createProgram(gl, vertexShaderSource, fragmentShaderSource)
 
-  var loc = {
+  let loc = {
     position: gl.getAttribLocation(program, "a_position"),
     normal: gl.getAttribLocation(program, "a_normal"),
     texcoord: gl.getAttribLocation(program, "a_texcoord"),
@@ -244,8 +244,8 @@ function main() {
   }
 
   // --- BUFFERS GERAIS ---
-  var cubeData = createCubeData();
-  var buffers = {
+  let cubeData = createCubeData();
+  let buffers = {
     pos: gl.createBuffer(), norm: gl.createBuffer(), tex: gl.createBuffer(), ind: gl.createBuffer()
   };
   gl.bindBuffer(gl.ARRAY_BUFFER, buffers.pos); gl.bufferData(gl.ARRAY_BUFFER, cubeData.positions, gl.STATIC_DRAW);
@@ -253,8 +253,8 @@ function main() {
   gl.bindBuffer(gl.ARRAY_BUFFER, buffers.tex); gl.bufferData(gl.ARRAY_BUFFER, cubeData.texcoords, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.ind); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cubeData.indices, gl.STATIC_DRAW);
 
-  var sphereGeo = createSphereData(0.15, 20, 20); 
-  var sphereBuffers = {
+  let sphereGeo = createSphereData(0.15, 20, 20); 
+  let sphereBuffers = {
       pos: gl.createBuffer(), norm: gl.createBuffer(), tex: gl.createBuffer(), ind: gl.createBuffer(), count: sphereGeo.indices.length
   };
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.pos); gl.bufferData(gl.ARRAY_BUFFER, sphereGeo.positions, gl.STATIC_DRAW);
@@ -273,18 +273,18 @@ function main() {
       console.error("ghost.js não carregado!");
   }
 
-  var texTerrain = loadTexture(gl, './ground.png')
-  var texWall = loadTexture(gl, './wall.png')
-  var texDoor = loadTexture(gl, './door.png')
+  let texTerrain = loadTexture(gl, './ground.png')
+  let texWall = loadTexture(gl, './wall.png')
+  let texDoor = loadTexture(gl, './door.png')
 
-  var lightPositions = new Float32Array([15.0, 10.0, 0.0, -15.0, 10.0, 0.0, 0.0, 10.0, 15.0, 0.0, 10.0, -15.0])
-  var lightColors = new Float32Array([0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.1, 0.1, 0.6])
+  let lightPositions = new Float32Array([15.0, 10.0, 0.0, -15.0, 10.0, 0.0, 0.0, 10.0, 15.0, 0.0, 10.0, -15.0])
+  let lightColors = new Float32Array([0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.1, 0.1, 0.6])
 
   // --- FUNÇÕES DE SPAWN ---
   function getEmptySpots() {
-      var emptySpots = [];
-      for (var r = 0; r < mapSize; r++) {
-          for (var c = 0; c < mapSize; c++) {
+      let emptySpots = [];
+      for (let r = 0; r < mapSize; r++) {
+          for (let c = 0; c < mapSize; c++) {
               if (window.LevelMap[r][c] === 0) {
                   emptySpots.push({ row: r, col: c });
               }
@@ -294,10 +294,10 @@ function main() {
   }
 
   function spawnKey() {
-      var emptySpots = getEmptySpots();
+      let emptySpots = getEmptySpots();
       if (emptySpots.length > 0) {
-          var randIndex = Math.floor(Math.random() * emptySpots.length);
-          var spot = emptySpots[randIndex];
+          let randIndex = Math.floor(Math.random() * emptySpots.length);
+          let spot = emptySpots[randIndex];
           keyData.x = spot.col - mapOffset + 0.5;
           keyData.z = spot.row - mapOffset + 0.5;
           keyData.active = true;
@@ -305,9 +305,9 @@ function main() {
   }
 
   function spawnDoor() {
-      var candidates = [];
-      for (var r = 1; r < mapSize - 1; r++) {
-          for (var c = 1; c < mapSize - 1; c++) {
+      let candidates = [];
+      for (let r = 1; r < mapSize - 1; r++) {
+          for (let c = 1; c < mapSize - 1; c++) {
               if (window.LevelMap[r][c] === 1) {
                   if (window.LevelMap[r - 1][c] === 0) candidates.push({ r: r, c: c, face: 'Back', offsetBytes: 12 });
                   else if (window.LevelMap[r + 1][c] === 0) candidates.push({ r: r, c: c, face: 'Front', offsetBytes: 0 });
@@ -317,7 +317,7 @@ function main() {
           }
       }
       if (candidates.length > 0) {
-          var chosen = candidates[Math.floor(Math.random() * candidates.length)];
+          let chosen = candidates[Math.floor(Math.random() * candidates.length)];
           doorData.row = chosen.r; doorData.col = chosen.c; doorData.offsetBytes = chosen.offsetBytes;
       }
   }
@@ -352,19 +352,19 @@ function main() {
   }, { passive: false })
 
   function checkCollision(x, z) {
-    var col = Math.floor(x + mapOffset)
-    var row = Math.floor(z + mapOffset)
+    let col = Math.floor(x + mapOffset)
+    let row = Math.floor(z + mapOffset)
     if (row < 0 || row >= mapSize || col < 0 || col >= mapSize) { return true }
     
     if (window.LevelMap[row][col] === 1) {
         if (row === doorData.row && col === doorData.col) {
             if (!keyData.active) {
                 // GANHOU - SEM ALERT
-                var endTime = Date.now();
-                var durationSeconds = (endTime - startTime) / 1000;
-                var basePoints = 10 - Math.floor(durationSeconds / 4.0);
+                let endTime = Date.now();
+                let durationSeconds = (endTime - startTime) / 1000;
+                let basePoints = 10 - Math.floor(durationSeconds / 4.0);
                 
-                var finalPoints = (basePoints - scorePenalty) < 0 ? 0 : (basePoints - scorePenalty);
+                let finalPoints = (basePoints - scorePenalty) < 0 ? 0 : (basePoints - scorePenalty);
                 
                 scores.push(finalPoints);
                 console.log("GANHOU! Pontos: " + finalPoints);
@@ -379,7 +379,7 @@ function main() {
   }
 
   function updateCharacter() {
-    var nextX = charX, nextZ = charZ, r = 0.35;
+    let nextX = charX, nextZ = charZ, r = 0.35;
 
     if (keysPressed["w"] || keysPressed["arrowup"]) nextZ -= charSpeed
     if (keysPressed["s"] || keysPressed["arrowdown"]) nextZ += charSpeed
@@ -396,7 +396,7 @@ function main() {
     }
     
     if (keyData.active) {
-        var dist = Math.sqrt(Math.pow(charX - keyData.x, 2) + Math.pow(charZ - keyData.z, 2));
+        let dist = Math.sqrt(Math.pow(charX - keyData.x, 2) + Math.pow(charZ - keyData.z, 2));
         if (dist < 0.5) keyData.active = false;
     }
   }
@@ -416,7 +416,7 @@ function main() {
     
     // Atualiza Fantasmas e Checa Colisão
     if(window.Ghost) {
-        var hit = window.Ghost.update(charX, charZ);
+        let hit = window.Ghost.update(charX, charZ);
         if(hit) {
             console.log("FANTASMA PEGOU! -5 Pontos");
             scorePenalty += 5;
@@ -424,9 +424,9 @@ function main() {
         }
     }
     
-    var elapsed = (Date.now() - startTime) / 1000;
-    var baseCalc = 10 - Math.floor(elapsed / 4.0);
-    var potentialPoints = (baseCalc - scorePenalty) < 0 ? 0 : (baseCalc - scorePenalty);
+    let elapsed = (Date.now() - startTime) / 1000;
+    let baseCalc = 10 - Math.floor(elapsed / 4.0);
+    let potentialPoints = (baseCalc - scorePenalty) < 0 ? 0 : (baseCalc - scorePenalty);
     
     if (uiElement) {
         uiElement.innerHTML = `
@@ -441,17 +441,17 @@ function main() {
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
-    var zNear = -1.0, zFar = -200.0
-    var fieldOfViewRadians = degToRad(60)
-    var top = Math.abs(zNear) * Math.tan(fieldOfViewRadians * 0.5)
-    var bottom = -top, right = top * aspect, left = -right
+    let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
+    let zNear = -1.0, zFar = -200.0
+    let fieldOfViewRadians = degToRad(60)
+    let top = Math.abs(zNear) * Math.tan(fieldOfViewRadians * 0.5)
+    let bottom = -top, right = top * aspect, left = -right
     
-    var projectionMatrix = window.m4.setPerspectiveProjectionMatrix(left, right, bottom, top, zNear, zFar)
+    let projectionMatrix = window.m4.setPerspectiveProjectionMatrix(left, right, bottom, top, zNear, zFar)
 
-    var camHeight = zoom * 0.8, camRadius = zoom
-    var camX = Math.sin(cameraAngle) * camRadius, camZ = Math.cos(cameraAngle) * camRadius
-    var viewMatrix = window.m4.setViewingMatrix([camX, camHeight, camZ], [0, 0, 0], [0, 1, 0])
+    let camHeight = zoom * 0.8, camRadius = zoom
+    let camX = Math.sin(cameraAngle) * camRadius, camZ = Math.cos(cameraAngle) * camRadius
+    let viewMatrix = window.m4.setViewingMatrix([camX, camHeight, camZ], [0, 0, 0], [0, 1, 0])
 
     gl.uniform3fv(loc.lightPositions, lightPositions)
     gl.uniform3fv(loc.lightColors, lightColors)
@@ -469,7 +469,7 @@ function main() {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.ind);
 
     // Chão
-    var floorM = window.m4.identity();
+    let floorM = window.m4.identity();
     floorM = window.m4.translate(floorM, 0, -0.5, 0); floorM = window.m4.scale(floorM, mapSize, 1, mapSize);
     gl.uniformMatrix4fv(loc.modelViewMatrix, false, floorM);
     gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(floorM)));
@@ -479,11 +479,11 @@ function main() {
 
     // Paredes
     gl.uniform1f(loc.textureScale, 1.0);
-    for (var row = 0; row < mapSize; row++) {
-      for (var col = 0; col < mapSize; col++) {
+    for (let row = 0; row < mapSize; row++) {
+      for (let col = 0; col < mapSize; col++) {
         if (window.LevelMap[row][col] === 1) {
-          var x = col - mapOffset + 0.5, z = row - mapOffset + 0.5;
-          var wallM = window.m4.identity(); wallM = window.m4.translate(wallM, x, 0.5, z);
+          let x = col - mapOffset + 0.5, z = row - mapOffset + 0.5;
+          let wallM = window.m4.identity(); wallM = window.m4.translate(wallM, x, 0.5, z);
           gl.uniformMatrix4fv(loc.modelViewMatrix, false, wallM);
           gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(wallM)));
 
@@ -506,7 +506,7 @@ function main() {
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.tex); gl.vertexAttribPointer(loc.texcoord, 2, gl.FLOAT, false, 0, 0);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.ind);
         gl.uniform1i(loc.useTex, 0); gl.uniform4fv(loc.color, [1.0, 0.84, 0.0, 1.0]);
-        var keyM = window.m4.identity(); keyM = window.m4.translate(keyM, keyData.x, 0.5, keyData.z);
+        let keyM = window.m4.identity(); keyM = window.m4.translate(keyM, keyData.x, 0.5, keyData.z);
         gl.uniformMatrix4fv(loc.modelViewMatrix, false, keyM);
         gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(keyM)));
         gl.drawElements(gl.TRIANGLES, sphereBuffers.count, gl.UNSIGNED_SHORT, 0)
@@ -525,7 +525,7 @@ function main() {
     gl.bindBuffer(gl.ARRAY_BUFFER, window.Character.bufferInfo.norm); gl.vertexAttribPointer(loc.normal, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, window.Character.bufferInfo.ind);
     gl.uniform1i(loc.useTex, 0); gl.uniform4fv(loc.color, [0.0, 1.0, 1.0, 1.0]);
-    var charM = window.m4.identity(); charM = window.m4.scale(charM, 0.8, 0.8, 0.8); charM = window.m4.translate(charM, charX, 0.5, charZ);
+    let charM = window.m4.identity(); charM = window.m4.scale(charM, 0.8, 0.8, 0.8); charM = window.m4.translate(charM, charX, 0.5, charZ);
     gl.uniformMatrix4fv(loc.modelViewMatrix, false, charM);
     gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, window.m4.transpose(window.m4.inverse(charM)));
     gl.drawElements(gl.TRIANGLES, window.Character.bufferInfo.count, gl.UNSIGNED_SHORT, 0)
