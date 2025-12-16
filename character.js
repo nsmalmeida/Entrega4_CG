@@ -3,22 +3,56 @@ var Character = {
   bufferInfo: null,
 
   init: function (gl) {
-    var arrays = {
-      position: new Float32Array([
-        -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5,
-        -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5,
-        -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5,
-        -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5,
-      ]),
-      normal: new Float32Array([
-        0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
-        0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
-        0,
-      ]),
-      indices: new Uint16Array([
-        0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21,
-        22, 20, 22, 23,
-      ]),
+    function setCubeVertices(v) {
+      return new Float32Array([
+        // Frente
+        -v, -v,  v,   v, -v,  v,   v,  v,  v,  -v,  v,  v,
+        // Trás
+        -v, -v, -v,  -v,  v, -v,   v,  v, -v,   v, -v, -v,
+        // Topo
+        -v,  v, -v,  -v,  v,  v,   v,  v,  v,   v,  v, -v,
+        // Fundo
+        -v, -v, -v,   v, -v, -v,   v, -v,  v,  -v, -v,  v,
+        // Direita
+         v, -v, -v,   v,  v, -v,   v,  v,  v,   v, -v,  v,
+        // Esquerda
+        -v, -v, -v,  -v, -v,  v,  -v,  v,  v,  -v,  v, -v,
+      ]);
+    }
+
+    function setCubeNormals() {
+      return new Float32Array([
+        // Frente
+        0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1,
+        // Trás
+        0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
+        // Topo
+        0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
+        // Fundo
+        0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
+        // Direita
+        1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
+        // Esquerda
+        -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
+      ]);
+    }
+
+    function setCubeIndices() {
+      return new Uint16Array([
+        0, 1, 2,      0, 2, 3,    // Frente
+        4, 5, 6,      4, 6, 7,    // Trás
+        8, 9, 10,     8, 10, 11,  // Topo
+        12, 13, 14,   12, 14, 15, // Fundo
+        16, 17, 18,   16, 18, 19, // Direita
+        20, 21, 22,   20, 22, 23  // Esquerda
+      ]);
+    }
+
+    //
+    const arrays = {
+      position: setCubeVertices(0.5), // Gera o cubo com tamanho 0.5
+      normal: setCubeNormals(),
+      indices: setCubeIndices(),
     }
 
     this.bufferInfo = {
@@ -52,15 +86,16 @@ var Character = {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufferInfo.ind)
 
     gl.uniform1i(loc.useTex, 0)
-    gl.uniform4fv(loc.color, [0.0, 0.8, 1.0, 1.0])
+    gl.uniform4fv(loc.color, [0.0, 0.8, 1.0, 1.0]) // Cor Ciano do personagem
 
-    // CORREÇÃO: Ordem das transformações
-    var matrix = m4.identity()
-    matrix = m4.scale(matrix, 0.8, 0.8, 0.8) // Primeiro escala
-    matrix = m4.translate(matrix, x, 0.5, z) // Depois translada
+    // Matriz de transformação
+    let matrix = m4.identity()
+    matrix = m4.translate(matrix, x, 0.5, z) // Move
+    matrix = m4.scale(matrix, 0.8, 0.8, 0.8) // Escala (Personagem é um pouco menor que o bloco)
 
-    gl.uniformMatrix4fv(loc.world, false, matrix)
-    gl.uniformMatrix4fv(loc.worldInverseTranspose, false, m4.transpose(m4.inverse(matrix)))
+    // Envia as matrizes separadas conforme o padrão do seu main.js atual
+    gl.uniformMatrix4fv(loc.modelViewMatrix, false, matrix)
+    gl.uniformMatrix4fv(loc.inverseTransposeModelViewMatrix, false, m4.transpose(m4.inverse(matrix)))
 
     gl.drawElements(gl.TRIANGLES, this.bufferInfo.count, gl.UNSIGNED_SHORT, 0)
   },
