@@ -558,7 +558,6 @@ function main() {
       }
     }
 
-    // 2. ATUALIZAÇÃO DA NOVA UI COM OS IDs CORRETOS
     let elapsed = (Date.now() - startTime) / 1000
 
     // Recuperar elementos caso a variavel global tenha perdido referencia
@@ -572,6 +571,7 @@ function main() {
     if (elScore) elScore.innerText = totalScore
     if (elTimer) elTimer.innerText = elapsed.toFixed(1)
 
+    // Mensagem para situação da chave
     if (elMsg) {
       if (!keyData.active) {
         elMsg.innerHTML =
