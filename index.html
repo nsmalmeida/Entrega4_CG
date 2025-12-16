@@ -4,41 +4,104 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Projeto CG - UNIFESP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+
     <style>
       body {
         margin: 0;
-        background-color: #1a1a1a;
+        background-image: url('background.jpg'); 
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
         display: flex;
         justify-content: center;
         align-items: center;
         height: 100vh;
-        color: white;
-        font-family: sans-serif;
         overflow: hidden;
       }
+
       canvas {
-        border: 2px solid #444;
-        box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
-        background-color: black;
+        /* Removemos a cor de fundo e borda para integrar com o cenário */
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+        border-radius: 15px;
       }
-      #ui-controls {
+
+      /* Estilo Geral da Interface */
+      .hud-text {
         position: absolute;
-        top: 20px;
-        left: 20px;
-        background: rgba(0, 0, 0, 0.8);
-        padding: 15px;
-        border-radius: 8px;
+        font-family: 'Bangers', cursive; /* Fonte Cartoon */
+        font-size: 3rem;
+        letter-spacing: 2px;
+        text-shadow: 
+            3px 3px 0 #000,
+            -1px -1px 0 #000,  
+            1px -1px 0 #000,
+            -1px 1px 0 #000,
+            1px 1px 0 #000; /* Borda preta estilo cartoon */
         pointer-events: none;
-        border: 1px solid #555;
+        padding: 20px;
+        z-index: 10;
+      }
+
+      /* 3. Pontuação no canto superior esquerdo (Amarelo) */
+      #score-container {
+        top: 10px;
+        left: 20px;
+        color: #ffeb3b; /* Amarelo Cartoon */
+      }
+
+      /* 2. Cronômetro no canto superior direito (Branco) */
+      #timer-container {
+        top: 10px;
+        right: 20px;
+        color: white;
+      }
+
+      /* Mensagens centrais (Chave/Vitória) */
+      #message-container {
+        position: absolute;
+        bottom: 30px;
+        width: 100%;
+        text-align: center;
+        font-family: 'Bangers', cursive;
+        font-size: 2rem;
+        text-shadow: 2px 2px 0 #000;
+        pointer-events: none;
+      }
+
+      #description {
+        bottom: 10px;
+        left: 20px;
+        color: #ffeb3b; /* Amarelo Cartoon */
+        font-size: 1rem;
+        color: white;
       }
     </style>
   </head>
   <body>
-    <div id="ui-controls">
-      <strong>Projeto Final - WebGL (Cenário)</strong><br />
-      <span style="color: #ffff00">WASD ou Setas para mover</span><br />
-      <span style="color: #00ffff">4 Luzes + Texturas</span>
+    <div id="score-container" class="hud-text">
+      SCORE: <span id="score-val">0</span>
     </div>
+
+    <div id="description" class="hud-text">
+      <h1>Objetivo do Jogo:</h1>
+      <h2>1. Encontra e Pegar a Chave</h2>
+      <h2>2. Encontra e Entrar na Porta</h2>
+      <h3>A porta só se abrirá se possuir a chave</h3>
+      <h2>Movimentação do Personagem:</h2>
+      <h3>W, S, A, D</h3>
+    </div>
+
+    <div id="timer-container" class="hud-text">
+      TIME: <span id="timer-val">0.0</span>s
+    </div>
+
+    <div id="message-container">
+        <span id="game-msg" style="color: white"></span>
+    </div>
+
     <canvas id="glCanvas" width="1024" height="768"></canvas>
 
     <script src="m4.js"></script>

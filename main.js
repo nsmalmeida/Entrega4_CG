@@ -1,4 +1,7 @@
-// main.js - Versão Final Corrigida (Sem Alert + Fix Visual Fantasmas)
+// main.js - Versão Estética Final
+
+// ... (MANTENHA OS SHADERS, createShader, createProgram, etc., IGUAIS AO ANTERIOR) ...
+// ... (Copie do seu arquivo original as variáveis shader e funções auxiliares até "ESTADO DO JOGO") ...
 
 let vertexShaderSource = `
   attribute vec3 a_position;
@@ -130,7 +133,6 @@ function loadTexture(gl, url) {
   return texture
 }
 
-// --- FUNÇÕES GEOMETRIA CUBO ---
 function setCubeVertices(v) {
   return new Float32Array([
     -v, -v,  v,  v, -v,  v,  v,  v,  v, -v,  v,  v, 
@@ -209,8 +211,12 @@ let mapSize = 21, blockSize = 1.0, mapOffset = (mapSize * blockSize) / 2;
 
 let scores = []; 
 let startTime = Date.now(); 
-let uiElement = document.getElementById("ui-controls"); 
 let scorePenalty = 0; 
+
+// Referências para os novos elementos da UI
+let elScore = document.getElementById("score-val");
+let elTimer = document.getElementById("timer-val");
+let elMsg = document.getElementById("game-msg");
 
 let keyData = { x: 0, z: 0, active: true };
 let doorData = { row: -1, col: -1, faceIndex: -1, offsetBytes: 0 };
@@ -219,7 +225,7 @@ function degToRad(d) { return d * Math.PI / 180; }
 
 function main() {
   let canvas = document.querySelector("#glCanvas")
-  let gl = canvas.getContext("webgl")
+  let gl = canvas.getContext("webgl", { alpha: true }) // Habilita transparência no contexto
   if (!gl) { console.error("WebGL não suportado"); return; }
 
   let program = createProgram(gl, vertexShaderSource, fragmentShaderSource)
@@ -262,11 +268,9 @@ function main() {
   gl.bindBuffer(gl.ARRAY_BUFFER, sphereBuffers.tex); gl.bufferData(gl.ARRAY_BUFFER, sphereGeo.texcoords, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereBuffers.ind); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, sphereGeo.indices, gl.STATIC_DRAW);
 
-  // Inicializa Módulos Externos
   window.Character = window.Character || {};
   window.Character.init(gl);
   
-  // Inicializa Fantasmas
   if(window.Ghost) {
       window.Ghost.init(gl);
   } else {
@@ -280,7 +284,6 @@ function main() {
   let lightPositions = new Float32Array([15.0, 10.0, 0.0, -15.0, 10.0, 0.0, 0.0, 10.0, 15.0, 0.0, 10.0, -15.0])
   let lightColors = new Float32Array([0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.1, 0.1, 0.6])
 
-  // --- FUNÇÕES DE SPAWN ---
   function getEmptySpots() {
       let emptySpots = [];
       for (let r = 0; r < mapSize; r++) {
@@ -326,10 +329,7 @@ function main() {
       charX = 0; charZ = 0;
       spawnKey();
       spawnDoor();
-      
-      // Spawn Fantasmas
       if(window.Ghost) window.Ghost.spawn();
-      
       startTime = Date.now();
       if(fullReset) scorePenalty = 0; 
       console.log("Nova rodada iniciada!");
@@ -337,7 +337,6 @@ function main() {
 
   resetMatch(true);
 
-  // --- CONTROLES ---
   window.addEventListener("keydown", (e) => { keysPressed[e.key.toLowerCase()] = true })
   window.addEventListener("keyup", (e) => { keysPressed[e.key.toLowerCase()] = false })
   canvas.addEventListener("mousedown", (e) => { isDragging = true; lastMouseX = e.clientX })
@@ -359,13 +358,11 @@ function main() {
     if (window.LevelMap[row][col] === 1) {
         if (row === doorData.row && col === doorData.col) {
             if (!keyData.active) {
-                // GANHOU - SEM ALERT
+                // GANHOU
                 let endTime = Date.now();
                 let durationSeconds = (endTime - startTime) / 1000;
                 let basePoints = 10 - Math.floor(durationSeconds / 4.0);
-                
                 let finalPoints = (basePoints - scorePenalty) < 0 ? 0 : (basePoints - scorePenalty);
-                
                 scores.push(finalPoints);
                 console.log("GANHOU! Pontos: " + finalPoints);
                 resetMatch(true); 
@@ -380,7 +377,6 @@ function main() {
 
   function updateCharacter() {
     let nextX = charX, nextZ = charZ, r = 0.35;
-
     if (keysPressed["w"] || keysPressed["arrowup"]) nextZ -= charSpeed
     if (keysPressed["s"] || keysPressed["arrowdown"]) nextZ += charSpeed
     if (keysPressed["a"] || keysPressed["arrowleft"]) nextX -= charSpeed
@@ -401,12 +397,14 @@ function main() {
     }
   }
 
-  // --- LOOP PRINCIPAL ---
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
   gl.enable(gl.DEPTH_TEST)
-  // Deixa CULL_FACE ligado globalmente (importante para chão e paredes)
   gl.enable(gl.CULL_FACE) 
-  gl.clearColor(0.05, 0.05, 0.05, 1.0)
+  
+  // 1. ALTERAÇÃO IMPORTANTE: CLEAR COLOR TRANSPARENTE
+  // R, G, B, Alpha (0.0 = transparente)
+  gl.clearColor(0.0, 0.0, 0.0, 0.0)
+  
   gl.useProgram(program)
 
   requestAnimationFrame(drawScene)
@@ -414,7 +412,6 @@ function main() {
   function drawScene() {
     updateCharacter();
     
-    // Atualiza Fantasmas e Checa Colisão
     if(window.Ghost) {
         let hit = window.Ghost.update(charX, charZ);
         if(hit) {
@@ -424,19 +421,26 @@ function main() {
         }
     }
     
+    // 2. ATUALIZAÇÃO DA NOVA UI COM OS IDs CORRETOS
     let elapsed = (Date.now() - startTime) / 1000;
-    let baseCalc = 10 - Math.floor(elapsed / 4.0);
-    let potentialPoints = (baseCalc - scorePenalty) < 0 ? 0 : (baseCalc - scorePenalty);
     
-    if (uiElement) {
-        uiElement.innerHTML = `
-            <strong>Projeto Final - WebGL</strong><br>
-            <span style="color:yellow">Tempo: ${elapsed.toFixed(1)}s</span><br>
-            <span style="color:cyan">Potencial: ${potentialPoints} pts</span><br>
-            <span style="color:red">Penalidade: -${scorePenalty}</span><br>
-            <span style="color:white">Histórico: [${scores.join(', ')}]</span><br>
-            ${!keyData.active ? '<span style="color:lime">CHAVE PEGA!</span>' : '<span style="color:red">PEGUE A CHAVE</span>'}
-        `;
+    // Recuperar elementos caso a variavel global tenha perdido referencia
+    elScore = document.getElementById("score-val");
+    elTimer = document.getElementById("timer-val");
+    elMsg = document.getElementById("game-msg");
+
+    // Calcula pontuação total acumulada
+    let totalScore = scores.reduce((a, b) => a + b, 0);
+
+    if (elScore) elScore.innerText = totalScore;
+    if (elTimer) elTimer.innerText = elapsed.toFixed(1);
+    
+    if (elMsg) {
+        if (!keyData.active) {
+            elMsg.innerHTML = '<span style="color:#4caf50">CHAVE COLETADA! ACHE A PORTA!</span>';
+        } else {
+            elMsg.innerHTML = '<span style="color:#ff5722">ENCONTRE A CHAVE!</span>';
+        }
     }
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -462,13 +466,12 @@ function main() {
     gl.uniformMatrix4fv(loc.projectionMatrix, false, projectionMatrix);
     gl.uniformMatrix4fv(loc.viewingMatrix, false, viewMatrix);
 
-    // --- DRAW CENARIO (CHÃO/PAREDES) ---
+    // --- DRAW CHÃO ---
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.pos); gl.vertexAttribPointer(loc.position, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(loc.position);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.norm); gl.vertexAttribPointer(loc.normal, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(loc.normal);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.tex); gl.vertexAttribPointer(loc.texcoord, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(loc.texcoord);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.ind);
 
-    // Chão
     let floorM = window.m4.identity();
     floorM = window.m4.translate(floorM, 0, -0.5, 0); floorM = window.m4.scale(floorM, mapSize, 1, mapSize);
     gl.uniformMatrix4fv(loc.modelViewMatrix, false, floorM);
@@ -477,7 +480,7 @@ function main() {
     gl.uniform1i(loc.texture, 0); gl.uniform1i(loc.useTex, 1); gl.uniform1f(loc.textureScale, 21.0);
     gl.drawElements(gl.TRIANGLES, cubeData.indices.length, gl.UNSIGNED_SHORT, 0);
 
-    // Paredes
+    // --- DRAW PAREDES ---
     gl.uniform1f(loc.textureScale, 1.0);
     for (let row = 0; row < mapSize; row++) {
       for (let col = 0; col < mapSize; col++) {
@@ -512,9 +515,8 @@ function main() {
         gl.drawElements(gl.TRIANGLES, sphereBuffers.count, gl.UNSIGNED_SHORT, 0)
     }
 
-    // --- DRAW FANTASMAS (CORREÇÃO DE VISUALIZAÇÃO) ---
+    // --- DRAW FANTASMAS ---
     if(window.Ghost) {
-        // Desabilita CULL_FACE apenas para os fantasmas para corrigir a transparência da frente
         gl.disable(gl.CULL_FACE); 
         window.Ghost.draw(gl, loc, window.m4);
         gl.enable(gl.CULL_FACE);
